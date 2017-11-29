@@ -250,6 +250,7 @@ resourcesDialog.setResources(kernel.getResources());
       resourcesButton.enable() ;
       runButton.requestFocus() ;
       running = false ;
+      kernel.stopCSV();
   }
 
   public void setTime( int newTime )

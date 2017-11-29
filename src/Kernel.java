@@ -14,6 +14,9 @@
  *
  */
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.Vector ;
 import java.lang.Thread ;
 import java.io.IOException ;
@@ -32,6 +35,8 @@ public class Kernel extends Thread
   private boolean stepping = false ;
   private int haltedCount = 0 ;
   private int blockedCount = 0 ;
+  PrintWriter pw;
+  StringBuilder sb;
 
   public void processHalted()
   {
@@ -166,6 +171,11 @@ public class Kernel extends Thread
 
   public void reset()
   {
+
+
+    sb = new StringBuilder();
+    sb.append("Resources:;");
+
     haltedCount = 0 ;
     blockedCount = 0 ;
     // reset all the resources
@@ -173,11 +183,18 @@ public class Kernel extends Thread
     {
       Resource resource = (Resource)resources.elementAt(i) ;
       resource.setCurrentAvailable( resource.getInitialAvailable() ) ;
+      sb.append(resource.getId());
+      sb.append(';');
     }
+
+    sb.append(";");
+    sb.append("Processes:;");
 
     // reset all the processes
     for ( int i = 0 ; i < processCount ; i ++ )
     {
+      sb.append((Process)processes.elementAt(i));
+      sb.append(';');
       try
       {
         ((Process)processes.elementAt(i)).reset() ;
@@ -191,6 +208,8 @@ public class Kernel extends Thread
     }
     time = 0 ;
     updateControlPanel();
+    sb.append('\n');
+    sb.append('\n');
   }
 
   public void step()
@@ -325,17 +344,45 @@ public class Kernel extends Thread
 
   public void printStatus()
   {
+
+    sb.append(time);
+    sb.append(";");
     System.out.print( "time = " + time + " available =" ) ;
     for( int i = 0 ; i < resourceCount ; i ++ )
       {
       Resource resource = ((Resource)resources.elementAt(i)) ;
       System.out.print( " " + resource.getCurrentAvailable() ) ;
+      sb.append(resource.getCurrentAvailable());
+      sb.append(";");
       }
     System.out.println( " blocked = " + blockedCount ) ;
+
+      sb.append(";");
+    sb.append(";");
+    for( int i = 0 ; i < processCount ; i ++ )
+    {
+      Process process = (Process)processes.elementAt(i) ;
+      sb.append(process.getState()) ;
+      sb.append(";");
+    }
+
+    sb.append('\n');
+
+
   }
 
   public void run()
   {
+    sb = new StringBuilder();
+    sb.append("writing...;now...");
+    try {
+      pw = new PrintWriter(new File("out.csv"));
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    }
+
+
+
     DeadlockManager.setProcesses(processes) ;
     DeadlockManager.setResources(resources) ;
     suspend() ;
@@ -360,10 +407,18 @@ public class Kernel extends Thread
       if ( processCount == haltedCount ||
            processCount == blockedCount )
       {
+          stopCSV();
         controlPanel.stopAction() ;
         suspend() ;
+
       }
     }
+  }
+
+  public void stopCSV()
+  {
+      pw.write(sb.toString());
+      pw.close();
   }
 
 }

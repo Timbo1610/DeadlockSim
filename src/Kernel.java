@@ -17,6 +17,7 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.sql.Time;
 import java.util.Vector ;
 import java.lang.Thread ;
 import java.io.IOException ;
@@ -36,7 +37,7 @@ public class Kernel extends Thread
   private int haltedCount = 0 ;
   private int blockedCount = 0 ;
   PrintWriter pw;
-  StringBuilder sb;
+  StringBuilder sb[];
 
   public void processHalted()
   {
@@ -171,30 +172,34 @@ public class Kernel extends Thread
 
   public void reset()
   {
-
-
-    sb = new StringBuilder();
-    sb.append("Resources:;");
-
+      try {
+          pw = new PrintWriter(new File(System.currentTimeMillis() + ".csv"));
+      } catch (FileNotFoundException e) {
+          e.printStackTrace();
+      }
+      sb = new StringBuilder[processCount + resourceCount];
     haltedCount = 0 ;
     blockedCount = 0 ;
     // reset all the resources
     for ( int i = 0 ; i < resourceCount ; i ++ )
     {
+        sb[i] = new StringBuilder();
+
       Resource resource = (Resource)resources.elementAt(i) ;
       resource.setCurrentAvailable( resource.getInitialAvailable() ) ;
-      sb.append(resource.getId());
-      sb.append(';');
+        sb[i].append("res: " + resource.getId());
+        sb[i].append(';');
     }
 
-    sb.append(";");
-    sb.append("Processes:;");
+    //sb.append(";");
+    //sb.append("Processes:;");
 
     // reset all the processes
     for ( int i = 0 ; i < processCount ; i ++ )
     {
-      sb.append((Process)processes.elementAt(i));
-      sb.append(';');
+        sb[i+resourceCount] = new StringBuilder();
+        sb[i+resourceCount].append((Process)processes.elementAt(i));
+        sb[i+resourceCount].append(';');
       try
       {
         ((Process)processes.elementAt(i)).reset() ;
@@ -208,8 +213,6 @@ public class Kernel extends Thread
     }
     time = 0 ;
     updateControlPanel();
-    sb.append('\n');
-    sb.append('\n');
   }
 
   public void step()
@@ -345,43 +348,28 @@ public class Kernel extends Thread
   public void printStatus()
   {
 
-    sb.append(time);
-    sb.append(";");
+    //sb.append(time);
+   // sb.append(";");
     System.out.print( "time = " + time + " available =" ) ;
     for( int i = 0 ; i < resourceCount ; i ++ )
       {
       Resource resource = ((Resource)resources.elementAt(i)) ;
       System.out.print( " " + resource.getCurrentAvailable() ) ;
-      sb.append(resource.getCurrentAvailable());
-      sb.append(";");
+          sb[i].append(resource.getCurrentAvailable());
+          sb[i].append(";");
       }
     System.out.println( " blocked = " + blockedCount ) ;
 
-      sb.append(";");
-    sb.append(";");
     for( int i = 0 ; i < processCount ; i ++ )
     {
       Process process = (Process)processes.elementAt(i) ;
-      sb.append(process.getState()) ;
-      sb.append(";");
+        sb[i+resourceCount].append(process.getState()) ;
+        sb[i+resourceCount].append(";");
     }
-
-    sb.append('\n');
-
-
   }
 
   public void run()
   {
-    sb = new StringBuilder();
-    sb.append("writing...;now...");
-    try {
-      pw = new PrintWriter(new File("out.csv"));
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-    }
-
-
 
     DeadlockManager.setProcesses(processes) ;
     DeadlockManager.setResources(resources) ;
@@ -417,7 +405,19 @@ public class Kernel extends Thread
 
   public void stopCSV()
   {
-      pw.write(sb.toString());
+      for( int i = 0 ; i < resourceCount ; i ++ )
+      {
+          pw.write(sb[i].toString() + '\n');
+      }
+      for( int i = 0 ; i < processCount ; i ++ )
+      {
+          pw.write(sb[i + resourceCount].toString() + '\n');
+      }
+      pw.write( "Time ;");
+      for (int i = 0; i < sb[0].length(); i++)
+      {
+          pw.write(i + ";");
+      }
       pw.close();
   }
 
